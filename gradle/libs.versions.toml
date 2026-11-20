@@ -1,7 +1,7 @@
 [versions]
-agp = "9.2.0"
+agp = "9.4.1"
 flatbuffersJava = "25.2.10"
-kotlin = "2.3.20"
+kotlin = "2.4.20"
 dexkit = "2.2.0"
 libxposed = "102.0.0"
 annotation = "1.10.0"
@@ -11,7 +11,7 @@ fuel = "3.0.0-alpha04"
 junit = "6.0.3"
 jadx = "1.5.5"
 slf4j = "2.0.17"
-material = "1.13.0"
+material = "1.14.0"
 composeBom = "2024.12.01"
 activityCompose = "1.10.0"
 
