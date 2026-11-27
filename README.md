@@ -3,51 +3,39 @@
   <br>
 </div>
 
-**ReVanced LSPosed module by ChsBuffer, just for Spotify.**  
->[!IMPORTANT]  
-> - This is **NOT an official ReVanced project**, do not ask the ReVanced developers for help.
-> - **Root access** is strictly **required** to use this module!
+[简体中文](README.zh-CN.md)
 
----
-### The Impact of Server-Side Consistency Checks
+**A ReVanced LSPosed module by ChsBuffer for Spotify.**
 
-Starting from late January 2026, the server has implemented a new verification logic 
-that enforces strict **dual-sync checks** for account attributes and configuration data. 
-The server now cross-references your account attributes (such as Subscription Type) and 
-core configuration data in real-time. If client-side modifications or suppressed logics are detected, 
-the server will immediately forcibly terminate the session.
-
-**To prevent frequent logouts, we have adjusted the patches to prioritize usability. **
-
-**Consequently:**
-
-- Audio and visual ads will now appear.
-- Non-functional Download button now visible.
-
-Remember: if you are not paying for the product, **you** are the product.
-
----  
+> [!IMPORTANT]
+> -   This is an **unofficial ReVanced project**. Please do not ask the ReVanced developers for support.
+> -   **Root access is required** to use this module.
 
 ## Patches
 
 ### Spotify
-- Unlock Spotify Premium
-- Sanitize sharing links
-- Monet theme by TheWinner02 (toggle in settings)
-- RoundyUI by TheWinner02 (toggle in settings)
+
+The list describes the features implemented in the source code. Results may vary by Spotify version. Features with a default state have a toggle in the module settings. Changes take effect after Spotify restarts.
+
+-   **Premium playback adjustments (on by default)**. Covers on-demand playback, playback order, Shuffle and Smart Shuffle, and adding tracks to the queue. This patch also adjusts the Premium UI, includes compatibility changes for Google Assistant playback and legacy Car Thing, and filters ad sections on Home and Browse as well as promotional pop-ups.
+-   **Ad blocking (on by default)**. Attempts to disable ads and hide the video ad countdown.
+-   **Share link sanitization**. Removes the `si` and `utm_source` tracking parameters when copying links or using the Android share sheet.
+-   **Session retention**. Attempts to prevent automatic sign-outs.
+-   **Third-party launcher widget compatibility**. Allows third-party Android launchers to bind Spotify widgets.
+-   **Monet theme by TheWinner02 (off by default)**. Uses Android's wallpaper-based colors for Spotify backgrounds and accents.
+-   **RoundyUI by TheWinner02 (off by default)**. Rounds corners on elements such as cards, cover art, buttons, and bottom sheets.
+-   **Native HTTP filtering (experimental, currently unregistered)**. Includes a filter for ad and tracking requests.
 
 ## Downloads
-- **Release build**: [Download](https://github.com/pizzaschleppa/ReVancedXposed_Spotify/releases)
 
-> [!NOTE]  
-> The package name and signature of this build are different every day. You don't have to reinstall it every day.
+-   [Download the release build](https://github.com/TigerSpirit217/ReVancedXposed_Spotify/releases)
+
+> [!NOTE]
+> The release build's package name and signature change daily. If you already have it installed, you can keep using your installation.
 
 ## ⭐ Credits
 
-[DexKit](https://luckypray.org/DexKit/en/): a high-performance dex runtime parsing library.
-
-[ReVanced](https://revanced.app): Continuing the legacy of Vanced
-
-[ChsBuffer](https://github.com/chsbuffer): Original ReVanced Xposed (now NexAlloy)
-
-[TheWinner02](https://github.com/TheWinner02): Additional Modifications
+-   High-performance DEX runtime parsing library [DexKit](https://luckypray.org/DexKit/en/)
+-   Continuation of the Vanced project [ReVanced](https://revanced.app)
+-   Original developer of ReVanced Xposed (now NexAlloy) [ChsBuffer](https://github.com/chsbuffer)
+-   Additional modifications by [TheWinner02](https://github.com/TheWinner02) and [pizzaschleppa](https://github.com/pizzaschleppa)
