@@ -23,6 +23,8 @@ import io.github.chsbuffer.revancedxposed.PREF_ENABLE_MONET
 import io.github.chsbuffer.revancedxposed.PREF_ENABLE_PREMIUM
 import io.github.chsbuffer.revancedxposed.PREF_ENABLE_ROUND_UI
 import io.github.chsbuffer.revancedxposed.PREF_FILE
+import io.github.chsbuffer.revancedxposed.PREF_LYRICS_BETTER_LYRICS
+import io.github.chsbuffer.revancedxposed.PREF_LYRICS_NETEASE
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 import java.io.File
@@ -82,6 +84,7 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
     @Composable
     fun SettingsScreen() {
         val scrollState = rememberScrollState()
+        var restarting by remember { mutableStateOf(false) }
 
         Column(
             modifier = Modifier
@@ -89,13 +92,24 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
                 .padding(24.dp)
                 .verticalScroll(scrollState)
         ) {
-            Text(
-                text = "ReVanced Xposed FE Settings",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(bottom = 6.dp)
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "ReVanced Xposed FE Settings",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f).padding(bottom = 6.dp)
+                )
+                TextButton(
+                    enabled = !restarting,
+                    onClick = {
+                        restarting = true
+                        SpotifyRestart.request(this@SettingsActivity) { restarting = false }
+                    }
+                ) {
+                    Text("Restart Spotify")
+                }
+            }
 
             Text(
                 text = "Changes apply after Spotify is restarted.",
@@ -146,6 +160,29 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
                         title = "Enable RoundyUI by TheWinner02",
                         subtitle = "Rounded corners on cards and images",
                         prefKey = PREF_ENABLE_ROUND_UI,
+                        defaultValue = false
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            Text("Lyrics sources", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Column(Modifier.padding(vertical = 8.dp)) {
+                    SettingsRow(
+                        title = "Better Lyrics",
+                        subtitle = "Look up missing lyrics by title, artist, album and duration",
+                        prefKey = PREF_LYRICS_BETTER_LYRICS,
+                        defaultValue = false
+                    )
+                    HorizontalDivider()
+                    SettingsRow(
+                        title = "NetEase Cloud Music",
+                        subtitle = "Look up missing lyrics by title and artist",
+                        prefKey = PREF_LYRICS_NETEASE,
                         defaultValue = false
                     )
                 }

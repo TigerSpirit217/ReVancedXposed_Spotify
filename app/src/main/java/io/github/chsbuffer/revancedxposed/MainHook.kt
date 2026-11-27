@@ -8,6 +8,8 @@ import app.revanced.extension.shared.Utils
 import io.github.chsbuffer.revancedxposed.spotify.AdBlockHook
 import io.github.chsbuffer.revancedxposed.spotify.RoundyUIHook
 import io.github.chsbuffer.revancedxposed.spotify.SpotifyHook
+import io.github.chsbuffer.revancedxposed.spotify.SpotifyRestart
+import io.github.chsbuffer.revancedxposed.spotify.SpotifySettingsEntry
 import io.github.chsbuffer.revancedxposed.spotify.ThemeHook
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
@@ -39,6 +41,7 @@ class MainHook : XposedModule() {
 
     private val targetPackages = setOf("com.spotify.music")
     private var initialized = false
+    private var processName: String? = null
 
     fun shouldHook(packageName: String): Boolean {
         return targetPackages.contains(packageName)
@@ -46,6 +49,7 @@ class MainHook : XposedModule() {
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
         module = this
+        processName = param.processName
         log(TAG, "onModuleLoaded: ${param.processName}")
     }
 
@@ -88,9 +92,22 @@ class MainHook : XposedModule() {
         }
         Utils.showToastLong("ReVanced Xposed FE is initializing, please wait...")
 
+        if (processName == app.packageName) {
+            runCatching { SpotifySettingsEntry.register(app) }
+                .onFailure { log(TAG, "Spotify settings entry failed", it) }
+            runCatching { SpotifyRestart.register(app) }
+                .onFailure { log(TAG, "Spotify restart registration failed", it) }
+        }
+
         // --- SPOTIFY PATCHES ---
         try {
-            SpotifyHook(app, lpparam, prefs.getBoolean(PREF_ENABLE_PREMIUM, true)).Hook()
+            SpotifyHook(
+                app,
+                lpparam,
+                enablePremium = prefs.getBoolean(PREF_ENABLE_PREMIUM, true),
+                lyricsBetterLyrics = prefs.getBoolean(PREF_LYRICS_BETTER_LYRICS, false),
+                lyricsNetEase = prefs.getBoolean(PREF_LYRICS_NETEASE, false)
+            ).Hook()
         } catch (e: Exception) {
             log(TAG, "Spotify patches failed: ${e.message}", e)
         }
@@ -151,3 +168,5 @@ const val PREF_ENABLE_PREMIUM = "enable_premium"
 const val PREF_ENABLE_ADBLOCK = "enable_adblock"
 const val PREF_ENABLE_MONET = "enable_monet"
 const val PREF_ENABLE_ROUND_UI = "enable_round_ui"
+const val PREF_LYRICS_BETTER_LYRICS = "lyrics_better_lyrics"
+const val PREF_LYRICS_NETEASE = "lyrics_netease"

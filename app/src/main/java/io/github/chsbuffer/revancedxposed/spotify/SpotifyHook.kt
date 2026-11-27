@@ -8,6 +8,7 @@ import io.github.chsbuffer.revancedxposed.XposedBridge
 import io.github.chsbuffer.revancedxposed.BaseHook
 import io.github.chsbuffer.revancedxposed.injectHostClassLoaderToSelf
 import io.github.chsbuffer.revancedxposed.spotify.misc.UnlockPremium
+import io.github.chsbuffer.revancedxposed.spotify.misc.lyrics.ExternalLyrics
 import io.github.chsbuffer.revancedxposed.spotify.misc.logout.LogOutPatch
 import io.github.chsbuffer.revancedxposed.spotify.misc.privacy.SanitizeSharingLinks
 import io.github.chsbuffer.revancedxposed.spotify.misc.widgets.FixThirdPartyLaunchersWidgets
@@ -16,10 +17,13 @@ import io.github.chsbuffer.revancedxposed.spotify.misc.widgets.FixThirdPartyLaun
 class SpotifyHook(
     app: Application,
     lpparam: LoadPackageParam,
-    enablePremium: Boolean = true
+    enablePremium: Boolean = true,
+    internal val lyricsBetterLyrics: Boolean = false,
+    internal val lyricsNetEase: Boolean = false
 ) : BaseHook(app, lpparam) {
     override val hooks = buildList {
         add(::Extension)
+        if (lyricsBetterLyrics || lyricsNetEase) add(::ExternalLyrics)
         add(::SanitizeSharingLinks)
         if (enablePremium) add(::UnlockPremium)
         add(::LogOutPatch)
