@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">ReVanced Xposed FE 設定</string>
+    <string name="settings_restart_spotify">重新啟動 Spotify</string>
+    <string name="settings_restart_hint">重新啟動 Spotify 後套用變更。</string>
+    <string name="settings_language">語言</string>
+    <string name="settings_simplify_chinese">全域正體中文轉簡體</string>
+    <string name="settings_simplify_chinese_description">將 Spotify 顯示的正體字轉為簡體，包含歌名、歌詞及專輯。</string>
+    <string name="settings_premium">啟用 Premium</string>
+    <string name="settings_premium_description">支援依序播放、隨機播放與智慧隨機播放</string>
+    <string name="settings_adblock">啟用廣告封鎖</string>
+    <string name="settings_adblock_description">封鎖廣告和其他不需要的內容</string>
+    <string name="settings_monet">啟用 Monet 主題</string>
+    <string name="settings_monet_description">依據桌布動態調整配色</string>
+    <string name="settings_roundy">啟用 RoundyUI</string>
+    <string name="settings_roundy_description">為卡片和圖片加上圓角</string>
+    <string name="settings_lyrics_sources">歌詞來源</string>
+    <string name="settings_better_lyrics">Better Lyrics</string>
+    <string name="settings_better_lyrics_description">依歌名、演出者、專輯及長度查詢缺少的歌詞</string>
+    <string name="settings_netease">網易雲音樂</string>
+    <string name="settings_netease_description">依歌名與演出者查詢缺少的歌詞</string>
+    <string name="settings_spotify_unavailable">找不到 Spotify</string>
+    <string name="settings_spotify_open_failed">無法開啟 Spotify</string>
+</resources>

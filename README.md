@@ -25,8 +25,8 @@ Open Spotify's sidebar and select **ReVanced Xposed Settings**. After changing s
 -   **Additional lyrics sources (off by default)**. Better Lyrics and NetEase Cloud Music can fill in missing lyrics in Spotify's existing lyrics view. If both are enabled, Better Lyrics is tried first.
 -   **Session retention**. Attempts to prevent automatic sign-outs.
 -   **Third-party launcher widget compatibility**. Allows third-party Android launchers to bind Spotify widgets.
--   **Monet theme by TheWinner02 (off by default)**. Uses Android's wallpaper-based colors for Spotify backgrounds and accents.
--   **RoundyUI by TheWinner02 (off by default)**. Rounds corners on elements such as cards, cover art, buttons, and bottom sheets.
+-   **Monet theme (off by default)**. Uses Android's wallpaper-based colors for Spotify backgrounds and accents.
+-   **RoundyUI (off by default)**. Rounds corners on elements such as cards, cover art, buttons, and bottom sheets.
 -   **Native HTTP filtering (experimental, currently unregistered)**. Includes a filter for ad and tracking requests.
 
 ## Downloads

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">ReVanced Xposed FE Settings</string>
+    <string name="settings_restart_spotify">Restart Spotify</string>
+    <string name="settings_restart_hint">Changes apply after restarting Spotify.</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_simplify_chinese">Convert Traditional Chinese to Simplified</string>
+    <string name="settings_simplify_chinese_description">Use Simplified Chinese for text displayed in Spotify, including song titles, lyrics and albums.</string>
+    <string name="settings_premium">Enable Premium</string>
+    <string name="settings_premium_description">Listen in any order, shuffle, or Smart Shuffle</string>
+    <string name="settings_adblock">Enable AdBlock</string>
+    <string name="settings_adblock_description">Block ads and other unwanted content</string>
+    <string name="settings_monet">Enable Monet Theme</string>
+    <string name="settings_monet_description">Dynamic colors based on the wallpaper</string>
+    <string name="settings_roundy">Enable RoundyUI</string>
+    <string name="settings_roundy_description">Rounded corners on cards and images</string>
+    <string name="settings_lyrics_sources">Lyrics sources</string>
+    <string name="settings_better_lyrics">Better Lyrics</string>
+    <string name="settings_better_lyrics_description">Look up missing lyrics by title, artist, album and duration</string>
+    <string name="settings_netease">NetEase Cloud Music</string>
+    <string name="settings_netease_description">Look up missing lyrics by title and artist</string>
+    <string name="settings_spotify_unavailable">Spotify is not available</string>
+    <string name="settings_spotify_open_failed">Could not open Spotify</string>
+</resources>

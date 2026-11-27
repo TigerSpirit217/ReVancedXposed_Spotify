@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">ReVanced Xposed FE 设置</string>
+    <string name="settings_restart_spotify">重启 Spotify</string>
+    <string name="settings_restart_hint">重启 Spotify 后应用更改。</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_simplify_chinese">全局繁体转简体</string>
+    <string name="settings_simplify_chinese_description">将 Spotify 中显示的繁体字转为简体，包括歌名、歌词和专辑。</string>
+    <string name="settings_premium">启用 Premium</string>
+    <string name="settings_premium_description">支持按顺序播放、随机播放和智能随机播放</string>
+    <string name="settings_adblock">启用广告拦截</string>
+    <string name="settings_adblock_description">拦截广告和其他不需要的内容</string>
+    <string name="settings_monet">启用 Monet 主题</string>
+    <string name="settings_monet_description">根据壁纸动态调整配色</string>
+    <string name="settings_roundy">启用 RoundyUI</string>
+    <string name="settings_roundy_description">为卡片和图片添加圆角</string>
+    <string name="settings_lyrics_sources">歌词来源</string>
+    <string name="settings_better_lyrics">Better Lyrics</string>
+    <string name="settings_better_lyrics_description">按歌名、艺人、专辑和时长查找缺失的歌词</string>
+    <string name="settings_netease">网易云音乐</string>
+    <string name="settings_netease_description">按歌名和艺人查找缺失的歌词</string>
+    <string name="settings_spotify_unavailable">找不到 Spotify</string>
+    <string name="settings_spotify_open_failed">无法打开 Spotify</string>
+</resources>

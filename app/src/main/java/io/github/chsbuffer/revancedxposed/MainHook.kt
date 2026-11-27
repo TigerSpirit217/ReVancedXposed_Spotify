@@ -7,6 +7,8 @@ import android.util.Log
 import app.revanced.extension.shared.Utils
 import io.github.chsbuffer.revancedxposed.spotify.AdBlockHook
 import io.github.chsbuffer.revancedxposed.spotify.RoundyUIHook
+import io.github.chsbuffer.revancedxposed.spotify.SettingsLanguage
+import io.github.chsbuffer.revancedxposed.spotify.SimplifyChineseHook
 import io.github.chsbuffer.revancedxposed.spotify.SpotifyHook
 import io.github.chsbuffer.revancedxposed.spotify.SpotifyRestart
 import io.github.chsbuffer.revancedxposed.spotify.SpotifySettingsEntry
@@ -92,6 +94,14 @@ class MainHook : XposedModule() {
         }
         Utils.showToastLong("ReVanced Xposed FE is initializing, please wait...")
 
+        runCatching {
+            if (prefs.getBoolean(PREF_SIMPLIFY_CHINESE, false) &&
+                SettingsLanguage.read(prefs) == SettingsLanguage.SIMPLIFIED_CHINESE
+            ) {
+                SimplifyChineseHook.install()
+            }
+        }.onFailure { log(TAG, "Could not enable Simplified Chinese display", it) }
+
         if (processName == app.packageName) {
             runCatching { SpotifySettingsEntry.register(app) }
                 .onFailure { log(TAG, "Spotify settings entry failed", it) }
@@ -170,3 +180,5 @@ const val PREF_ENABLE_MONET = "enable_monet"
 const val PREF_ENABLE_ROUND_UI = "enable_round_ui"
 const val PREF_LYRICS_BETTER_LYRICS = "lyrics_better_lyrics"
 const val PREF_LYRICS_NETEASE = "lyrics_netease"
+const val PREF_SETTINGS_LANGUAGE = "settings_language"
+const val PREF_SIMPLIFY_CHINESE = "simplify_chinese"

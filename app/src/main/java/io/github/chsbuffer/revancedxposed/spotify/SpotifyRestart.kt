@@ -16,6 +16,7 @@ import android.os.ResultReceiver
 import android.os.SystemClock
 import android.widget.Toast
 import io.github.chsbuffer.revancedxposed.BuildConfig
+import io.github.chsbuffer.revancedxposed.R
 
 internal object SpotifyRestart {
     private const val SPOTIFY_PACKAGE = "com.spotify.music"
@@ -50,7 +51,7 @@ internal object SpotifyRestart {
     fun request(activity: Activity, onFinished: () -> Unit) {
         val launch = activity.packageManager.getLaunchIntentForPackage(SPOTIFY_PACKAGE)
         if (launch == null) {
-            Toast.makeText(activity, "Spotify is not available", Toast.LENGTH_SHORT).show()
+            Toast.makeText(activity, R.string.settings_spotify_unavailable, Toast.LENGTH_SHORT).show()
             onFinished()
             return
         }
@@ -65,7 +66,7 @@ internal object SpotifyRestart {
                     activity.startActivity(launch)
                     activity.finish()
                 }.onFailure {
-                    Toast.makeText(activity, "Could not open Spotify", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(activity, R.string.settings_spotify_open_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }

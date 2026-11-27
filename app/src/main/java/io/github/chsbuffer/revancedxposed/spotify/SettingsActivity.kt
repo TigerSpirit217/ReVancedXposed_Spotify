@@ -1,6 +1,7 @@
 package io.github.chsbuffer.revancedxposed.spotify
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -14,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,12 +27,21 @@ import io.github.chsbuffer.revancedxposed.PREF_ENABLE_ROUND_UI
 import io.github.chsbuffer.revancedxposed.PREF_FILE
 import io.github.chsbuffer.revancedxposed.PREF_LYRICS_BETTER_LYRICS
 import io.github.chsbuffer.revancedxposed.PREF_LYRICS_NETEASE
+import io.github.chsbuffer.revancedxposed.PREF_SETTINGS_LANGUAGE
+import io.github.chsbuffer.revancedxposed.PREF_SIMPLIFY_CHINESE
+import io.github.chsbuffer.revancedxposed.R
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 import java.io.File
 
 class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListener {
-    private var xposedService: XposedService? = null
+    companion object {
+        // The framework may not redeliver the service when a locale change recreates this activity.
+        @Volatile
+        private var xposedService: XposedService? = null
+    }
+
+    private lateinit var language: SettingsLanguage
 
     private val prefs by lazy {
         getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
@@ -40,12 +51,15 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
         xposedService = service
         runCatching {
             val remotePrefs = service.getRemotePreferences(PREF_FILE)
-            // Ensure remote preferences are seeded with any local settings
+            val remoteValues = remotePrefs.all
+            // Seed existing switches and sync any language changes saved while disconnected.
             val editor = remotePrefs.edit()
             var changed = false
             for ((k, v) in prefs.all) {
-                if (v is Boolean && !remotePrefs.contains(k)) {
-                    editor.putBoolean(k, v)
+                if ((v is Boolean && k !in remoteValues) ||
+                    ((k == PREF_SETTINGS_LANGUAGE || k == PREF_SIMPLIFY_CHINESE) && v != remoteValues[k])
+                ) {
+                    editor.putSetting(k, v)
                     changed = true
                 }
             }
@@ -54,7 +68,12 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
     }
 
     override fun onServiceDied(service: XposedService) {
-        xposedService = null
+        if (xposedService === service) xposedService = null
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        language = SettingsLanguage.read(newBase.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE))
+        super.attachBaseContext(language.applyTo(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -94,7 +113,7 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "ReVanced Xposed FE Settings",
+                    text = stringResource(R.string.settings_title),
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
@@ -107,16 +126,33 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
                         SpotifyRestart.request(this@SettingsActivity) { restarting = false }
                     }
                 ) {
-                    Text("Restart Spotify")
+                    Text(stringResource(R.string.settings_restart_spotify))
                 }
             }
 
             Text(
-                text = "Changes apply after Spotify is restarted.",
+                text = stringResource(R.string.settings_restart_hint),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 20.dp)
             )
+
+            LanguageSelector()
+            Spacer(Modifier.height(12.dp))
+            if (language == SettingsLanguage.SIMPLIFIED_CHINESE) {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    SettingsRow(
+                        title = stringResource(R.string.settings_simplify_chinese),
+                        subtitle = stringResource(R.string.settings_simplify_chinese_description),
+                        prefKey = PREF_SIMPLIFY_CHINESE,
+                        defaultValue = false
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
 
             Surface(
                 shape = RoundedCornerShape(28.dp),
@@ -127,8 +163,8 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
                     modifier = Modifier.padding(vertical = 8.dp)
                 ) {
                     SettingsRow(
-                        title = "Enable Premium",
-                        subtitle = "Listen in any order, shuffle, or Smart Shuffle",
+                        title = stringResource(R.string.settings_premium),
+                        subtitle = stringResource(R.string.settings_premium_description),
                         prefKey = PREF_ENABLE_PREMIUM,
                         defaultValue = true
                     )
@@ -137,8 +173,8 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                     SettingsRow(
-                        title = "Enable AdBlock",
-                        subtitle = "Block ads and other unwanted content",
+                        title = stringResource(R.string.settings_adblock),
+                        subtitle = stringResource(R.string.settings_adblock_description),
                         prefKey = PREF_ENABLE_ADBLOCK,
                         defaultValue = true
                     )
@@ -147,8 +183,8 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                     SettingsRow(
-                        title = "Enable Monet Theme by TheWinner02",
-                        subtitle = "Dynamic colors based on the wallpaper",
+                        title = stringResource(R.string.settings_monet),
+                        subtitle = stringResource(R.string.settings_monet_description),
                         prefKey = PREF_ENABLE_MONET,
                         defaultValue = false
                     )
@@ -157,15 +193,15 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                     SettingsRow(
-                        title = "Enable RoundyUI by TheWinner02",
-                        subtitle = "Rounded corners on cards and images",
+                        title = stringResource(R.string.settings_roundy),
+                        subtitle = stringResource(R.string.settings_roundy_description),
                         prefKey = PREF_ENABLE_ROUND_UI,
                         defaultValue = false
                     )
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Text("Lyrics sources", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.settings_lyrics_sources), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             Surface(
                 shape = RoundedCornerShape(28.dp),
@@ -173,18 +209,45 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
             ) {
                 Column(Modifier.padding(vertical = 8.dp)) {
                     SettingsRow(
-                        title = "Better Lyrics",
-                        subtitle = "Look up missing lyrics by title, artist, album and duration",
+                        title = stringResource(R.string.settings_better_lyrics),
+                        subtitle = stringResource(R.string.settings_better_lyrics_description),
                         prefKey = PREF_LYRICS_BETTER_LYRICS,
                         defaultValue = false
                     )
                     HorizontalDivider()
                     SettingsRow(
-                        title = "NetEase Cloud Music",
-                        subtitle = "Look up missing lyrics by title and artist",
+                        title = stringResource(R.string.settings_netease),
+                        subtitle = stringResource(R.string.settings_netease_description),
                         prefKey = PREF_LYRICS_NETEASE,
                         defaultValue = false
                     )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun LanguageSelector() {
+        var expanded by remember { mutableStateOf(false) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.settings_language),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Box {
+                TextButton(onClick = { expanded = true }) { Text(language.displayName) }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    SettingsLanguage.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.displayName) },
+                            onClick = {
+                                expanded = false
+                                savePref(PREF_SETTINGS_LANGUAGE, option.tag)
+                                if (option != language) recreate()
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -229,12 +292,19 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
         }
     }
 
-    private fun savePref(key: String, value: Boolean) {
-        prefs.edit(commit = true) { putBoolean(key, value) }
+    private fun savePref(key: String, value: Any) {
+        prefs.edit(commit = true) { putSetting(key, value) }
         runCatching {
-            xposedService?.getRemotePreferences(PREF_FILE)?.edit()?.putBoolean(key, value)?.apply()
+            xposedService?.getRemotePreferences(PREF_FILE)?.edit { putSetting(key, value) }
         }
         makePrefsReadable()
+    }
+
+    private fun SharedPreferences.Editor.putSetting(key: String, value: Any?) {
+        when (value) {
+            is Boolean -> putBoolean(key, value)
+            is String -> putString(key, value)
+        }
     }
 
     private fun makePrefsReadable() {
