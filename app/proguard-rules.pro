@@ -36,5 +36,7 @@
 }
 
 -assumenosideeffects class app.revanced.extension.shared.Logger {
-    *;
+    public static void printDebug(...);
+    public static void printInfo(...);
+    public static void printException(...);
 }

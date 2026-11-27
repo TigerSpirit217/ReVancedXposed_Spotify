@@ -281,8 +281,8 @@ public class Utils {
 
     @ColorInt
     public static int getResourceColor(String resourceIdentifierName) throws Resources.NotFoundException {
-        //noinspection deprecation
-        return getContext().getResources().getColor(getResourceIdentifierOrThrow(resourceIdentifierName, "color"));
+        int resourceId = getResourceIdentifierOrThrow(resourceIdentifierName, "color");
+        return getContext().getResources().getColor(resourceId, null);
     }
 
     public static int getResourceDimensionPixelSize(String resourceIdentifierName) throws Resources.NotFoundException {

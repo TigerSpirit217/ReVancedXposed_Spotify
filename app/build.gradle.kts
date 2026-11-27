@@ -18,7 +18,8 @@ val gitCommitDateProvider = providers.exec {
     workingDir = rootProject.rootDir
 }.standardOutput.asText!!
 
-private val seed = (project.properties["PACKAGE_NAME_SEED"] as? String ?: "0").toLong().also { println("Seed for package name: $it") }
+private val seed = providers.gradleProperty("PACKAGE_NAME_SEED").orElse("0").get()
+    .toLong().also { println("Seed for package name: $it") }
 private val myPackageName = genPackageName(seed).also { println("Package name: $it") }
 
 private fun genPackageName(seed: Long): String {
@@ -70,6 +71,10 @@ android {
             )
         )
     }
+    // Both AARs already ship stripped native libraries.
+    packaging.jniLibs.keepDebugSymbols.addAll(
+        listOf("**/libandroidx.graphics.path.so", "**/libdexkit.so")
+    )
     buildFeatures {
         buildConfig = true
         compose = true
@@ -108,7 +113,7 @@ tasks.withType<Test> {
 
 dependencies {
 //    implementation(libs.dexkit)
-    implementation(group = "", name = "dexkit-android", ext = "aar")
+    implementation(":dexkit-android@aar")
     implementation(libs.flatbuffers.java) // dexkit dependency
     implementation(libs.annotation)
     implementation(libs.kotlinx.serialization.protobuf)
