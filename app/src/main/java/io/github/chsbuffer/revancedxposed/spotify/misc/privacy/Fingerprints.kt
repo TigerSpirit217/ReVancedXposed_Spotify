@@ -27,28 +27,24 @@ val formatAndroidShareSheetUrlFingerprint = findMethodDirect {
         findMethod {
             matcher {
                 returnType("java.lang.String")
-                addUsingNumber('\n'.code)
+                addUsingString("\n")
                 modifiers = Modifier.PUBLIC or Modifier.STATIC
                 paramTypes(null, "java.lang.String")
             }
         }.single {
-            // exclude
-            // `(PlayerState, String) -> String` usingNumbers(1, 10); usingStrings("")
-            !it.usingStrings.contains("")
+            // Exclude other text formatters taking two strings
+            // (e.g. the debug reporter builder).
+            it.paramTypeNames.firstOrNull()?.startsWith("java.") != true
         }
     }.getOrElse {
         findMethod {
             matcher {
                 returnType("java.lang.String")
-                addUsingNumber('\n'.code)
-                modifiers = Modifier.PUBLIC
-                paramTypes("com.spotify.share.social.sharedata.ShareData", "java.lang.String")
+                addUsingString("\n")
+                paramTypes(null, "java.lang.String")
             }
         }.single {
-            // exclude
-            // `(PlayerState, String) -> String` usingNumbers(1, 10); usingStrings("")
-            !it.usingStrings.contains("")
+            it.paramTypeNames.firstOrNull()?.startsWith("java.") != true
         }
     }
-
 }

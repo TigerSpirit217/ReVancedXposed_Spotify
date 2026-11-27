@@ -4,16 +4,12 @@ import app.revanced.extension.shared.Logger
 import app.revanced.extension.spotify.misc.UnlockPremiumPatch
 import io.github.chsbuffer.revancedxposed.HookParam
 import io.github.chsbuffer.revancedxposed.XC_MethodHook
-import io.github.chsbuffer.revancedxposed.XposedBridge
 import io.github.chsbuffer.revancedxposed.XposedHelpers
 import io.github.chsbuffer.revancedxposed.callMethod
-import io.github.chsbuffer.revancedxposed.findField
 import io.github.chsbuffer.revancedxposed.findFirstFieldByExactType
 import io.github.chsbuffer.revancedxposed.spotify.SpotifyHook
 import org.luckypray.dexkit.wrap.DexField
 import org.luckypray.dexkit.wrap.DexMethod
-import java.lang.reflect.Constructor
-import java.lang.reflect.Field
 
 @Suppress("UNCHECKED_CAST")
 fun SpotifyHook.UnlockPremium() {
@@ -24,45 +20,34 @@ fun SpotifyHook.UnlockPremium() {
     ::productStateProtoFingerprint.hookMethod {
         after { param ->
             val result = param.result as? Map<String, *> ?: return@after
-            // Use the standard method you probably already have.
-            UnlockPremiumPatch.overrideAttributes(result)
             // To be extra safe, there is no need to reassign param.result
             // because the map was modified internally.
+            UnlockPremiumPatch.overrideAttributes(result)
         }
     }
 
-    // --- 2. POPULAR TRACKS (ARTIST PAGE) ---
-    ::buildQueryParametersFingerprint.hookMethod {
-        after { param ->
-            val result = param.result ?: return@after
-            val fieldName = "checkDeviceCapability"
-            if (result.toString().contains("$fieldName=")) {
-                param.result = XposedBridge.invokeOriginalMethod(
-                    param.method, param.thisObject, arrayOf(param.args[0], true)
-                )
-            }
-        }
-    }
-
-    // --- 3. GOOGLE ASSISTANT (FIX URIs) ---
+    // --- 2. GOOGLE ASSISTANT (FIX URIs) ---
     ::contextFromJsonFingerprint.hookMethod {
-        fun safeRemoveStation(field: Field?, obj: Any?) {
-            if (field == null || obj == null) return
-            runCatching {
-                val value = field.get(obj) as? String ?: return
-                field.set(obj, UnlockPremiumPatch.removeStationString(value))
-            }
-        }
-
         after { param ->
-            val result = param.result ?: return@after
-            val clazz = result.javaClass
-            safeRemoveStation(clazz.findField("uri"), result)
-            safeRemoveStation(clazz.findField("url"), result)
+            val context = param.result ?: return@after
+            runCatching {
+                val uri = context.callMethod("uri") as? String
+                val url = context.callMethod("url") as? String
+                val fixedUri = uri?.let { UnlockPremiumPatch.removeStationString(it) }
+                val fixedUrl = url?.let { UnlockPremiumPatch.removeStationString(it) }
+                if (fixedUri == uri && fixedUrl == url) return@runCatching
+
+                val builder = context.callMethod("toBuilder") ?: return@runCatching
+                if (fixedUri != null) builder.callMethod("uri", fixedUri)
+                if (fixedUrl != null) builder.callMethod("url", fixedUrl)
+                param.result = builder.callMethod("build")
+            }.onFailure {
+                Logger.printDebug { "Context station hook failed: ${it.message}" }
+            }
         }
     }
 
-    // --- 4. ANTI-SHUFFLE (GOOGLE ASSISTANT) ---
+    // --- 3. ANTI-SHUFFLE (GOOGLE ASSISTANT) ---
     runCatching {
         XposedHelpers.findAndHookMethod(
             $$"com.spotify.player.model.command.options.AutoValue_PlayerOptionOverrides$Builder",
@@ -75,31 +60,7 @@ fun SpotifyHook.UnlockPremium() {
             })
     }.onFailure { Logger.printDebug { "PlayerOptionOverrides hook failed: ${it.message}" } }
 
-    // --- 5. CONTEXT MENU CLEANUP (REMOVE ADS) ---
-    runCatching {
-        val contextMenuViewModelClazz = ::contextMenuViewModelClass.clazz
-        XposedBridge.hookAllConstructors(contextMenuViewModelClazz, object : XC_MethodHook() {
-            val isPremiumUpsell = runCatching { ::isPremiumUpsellField.field }.getOrNull()
-
-            override fun beforeHookedMethod(param: HookParam) {
-                if (isPremiumUpsell == null) return
-                val parameterTypes = (param.method as Constructor<*>).parameterTypes
-                for (i in param.args.indices) {
-                    if (parameterTypes[i].name != "java.util.List") continue
-                    val original = param.args[i] as? List<*> ?: continue
-
-                    // Filter out items that lead to Premium ads.
-                    val filtered = original.filter { item ->
-                        val vm = item?.callMethod("getViewModel")
-                        vm?.let { isPremiumUpsell.get(it) as? Boolean } != true
-                    }
-                    param.args[i] = filtered
-                }
-            }
-        })
-    }.onFailure { Logger.printDebug { "ContextMenu hook failed: ${it.message}" } }
-
-    // --- 6. REMOVE AD SECTIONS (HOME & BROWSE) ---
+    // --- 4. REMOVE AD SECTIONS (HOME & BROWSE) ---
     // For Home.
     ::homeStructureGetSectionsFingerprint.hookMethod {
         after { param ->
@@ -124,7 +85,7 @@ fun SpotifyHook.UnlockPremium() {
         }
     }
 
-    // --- 7. BLOCK AD POPUPS (PENDRAGON) ---
+    // --- 5. BLOCK AD POPUPS (PENDRAGON) ---
     // Simulate a natural network error instead of blocking the call.
     val replaceWithRxError = object : XC_MethodHook() {
         val justMethod = DexMethod("Lio/reactivex/rxjava3/core/Single;->just(Ljava/lang/Object;)Lio/reactivex/rxjava3/core/Single;").toMethod()
