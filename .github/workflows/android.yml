@@ -30,6 +30,7 @@ jobs:
     steps:
     - uses: actions/checkout@v7
       with:
+        fetch-depth: 0
         submodules: true
 
     - name: set up JDK
@@ -42,17 +43,28 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Get random number
-      id: random
-      run: echo "NUMBER=$(shuf -i 1-10000 -n 1)" >> $GITHUB_OUTPUT
+    - name: Read build metadata
+      id: metadata
+      run: |
+        version_code=$(git rev-list --count HEAD)
+        commit_date=$(git log -1 --format=%cd --date=format:%y%m%d)
+        package_name_seed=$(shuf -i 1-10000 -n 1)
+        {
+          echo "version_code=$version_code"
+          echo "commit_date=$commit_date"
+          echo "package_name_seed=$package_name_seed"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Build Release
-      run: ./gradlew assembleUniversalRelease -PPACKAGE_NAME_SEED=${{ steps.random.outputs.NUMBER }}
+      run: ./gradlew assembleUniversalRelease -PPACKAGE_NAME_SEED="$PACKAGE_NAME_SEED" -PVERSION_CODE="$VERSION_CODE"
+      env:
+        PACKAGE_NAME_SEED: ${{ steps.metadata.outputs.package_name_seed }}
+        VERSION_CODE: ${{ steps.metadata.outputs.version_code }}
 
     - name: Upload a Release Artifact
       uses: actions/upload-artifact@v7
       with:
-        name: rvxp-ci-release-apk
+        name: rvxp-ci-release-apk-${{ steps.metadata.outputs.version_code }}
         path: |
           app/build/outputs/apk/universal/release
           app/build/outputs/mapping/universalRelease/mapping.txt
@@ -60,10 +72,13 @@ jobs:
     - name: Create AutoBuild Release
       run: |
         GIT_DESCRIBE=$(git rev-parse --short HEAD)
-        GIT_COMMIT_DATE=$(git log -1 --format=%cd --date=format:%y%m%d)
-        cd app/build/outputs/apk/universal/release/
-        mv app-universal-release.apk ReVancedXposedSpotify-${GIT_COMMIT_DATE}.apk
+        apk="app/build/outputs/apk/universal/release/ReVancedXposedSpotify-$GIT_COMMIT_DATE-$VERSION_CODE.apk"
+        test -f "$apk"
         gh release delete autobuild --yes || true
-        gh release create autobuild ReVancedXposedSpotify-${GIT_COMMIT_DATE}.apk --latest --title "Build ${GIT_COMMIT_DATE}" --notes "Commit ${GIT_DESCRIBE}. The package name and signature of this build are different every day. You don't have to reinstall it every day."
+        printf 'VersionCode: %s\n\nCommit %s. %s\n' "$VERSION_CODE" "$GIT_DESCRIBE" \
+          "The package name and signature of this build are different every day. You don't have to reinstall it every day." |
+          gh release create autobuild "$apk" --latest --title "Build $GIT_COMMIT_DATE-$VERSION_CODE" --notes-file -
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GIT_COMMIT_DATE: ${{ steps.metadata.outputs.commit_date }}
+        VERSION_CODE: ${{ steps.metadata.outputs.version_code }}

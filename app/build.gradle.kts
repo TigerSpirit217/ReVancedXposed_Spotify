@@ -20,6 +20,7 @@ val gitCommitDateProvider = providers.exec {
 
 private val seed = providers.gradleProperty("PACKAGE_NAME_SEED").orElse("0").get()
     .toLong().also { println("Seed for package name: $it") }
+private val ciVersionCode = providers.gradleProperty("VERSION_CODE").map(String::toInt)
 private val myPackageName = genPackageName(seed).also { println("Package name: $it") }
 
 private fun genPackageName(seed: Long): String {
@@ -53,7 +54,7 @@ android {
 
     defaultConfig {
         applicationId = myPackageName
-        versionCode = 35
+        versionCode = ciVersionCode.orElse(35).get()
         versionName = gitCommitDateProvider.get().trim()
         buildConfigField("String", "COMMIT_HASH", "\"${gitCommitHashProvider.get().trim()}\"")
     }
@@ -138,5 +139,12 @@ dependencies {
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
         variant.packaging.resources.excludes.add("kotlin/**")
+        if (ciVersionCode.isPresent) {
+            variant.outputs.forEach { output ->
+                output.outputFileName.set(output.versionName.zip(output.versionCode) { date, code ->
+                    "ReVancedXposedSpotify-$date-$code.apk"
+                })
+            }
+        }
     }
 }
