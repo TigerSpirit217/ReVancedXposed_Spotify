@@ -30,6 +30,7 @@ import io.github.chsbuffer.revancedxposed.PREF_LYRICS_NETEASE
 import io.github.chsbuffer.revancedxposed.PREF_SETTINGS_LANGUAGE
 import io.github.chsbuffer.revancedxposed.PREF_SIMPLIFY_CHINESE
 import io.github.chsbuffer.revancedxposed.R
+import io.github.chsbuffer.revancedxposed.spotify.misc.lyrics.LyricsSourceSettings
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
 import java.io.File
@@ -39,6 +40,9 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
         // The framework may not redeliver the service when a locale change recreates this activity.
         @Volatile
         private var xposedService: XposedService? = null
+        private val reconnectSettings = setOf(
+            PREF_SETTINGS_LANGUAGE, PREF_SIMPLIFY_CHINESE, PREF_LYRICS_BETTER_LYRICS, PREF_LYRICS_NETEASE
+        )
     }
 
     private lateinit var language: SettingsLanguage
@@ -52,12 +56,12 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
         runCatching {
             val remotePrefs = service.getRemotePreferences(PREF_FILE)
             val remoteValues = remotePrefs.all
-            // Seed existing switches and sync any language changes saved while disconnected.
+            // Seed existing switches and sync language and lyrics choices saved while disconnected.
             val editor = remotePrefs.edit()
             var changed = false
             for ((k, v) in prefs.all) {
                 if ((v is Boolean && k !in remoteValues) ||
-                    ((k == PREF_SETTINGS_LANGUAGE || k == PREF_SIMPLIFY_CHINESE) && v != remoteValues[k])
+                    (k in reconnectSettings && v != remoteValues[k])
                 ) {
                     editor.putSetting(k, v)
                     changed = true
@@ -104,6 +108,7 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
     fun SettingsScreen() {
         val scrollState = rememberScrollState()
         var restarting by remember { mutableStateOf(false) }
+        var lyricsSources by remember { mutableStateOf(LyricsSourceSettings.read(prefs)) }
 
         Column(
             modifier = Modifier
@@ -211,16 +216,20 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
                     SettingsRow(
                         title = stringResource(R.string.settings_better_lyrics),
                         subtitle = stringResource(R.string.settings_better_lyrics_description),
-                        prefKey = PREF_LYRICS_BETTER_LYRICS,
-                        defaultValue = false
-                    )
+                        checked = lyricsSources.betterLyrics
+                    ) { enabled ->
+                        savePref(PREF_LYRICS_BETTER_LYRICS, enabled)
+                        lyricsSources = LyricsSourceSettings.read(prefs)
+                    }
                     HorizontalDivider()
                     SettingsRow(
                         title = stringResource(R.string.settings_netease),
                         subtitle = stringResource(R.string.settings_netease_description),
-                        prefKey = PREF_LYRICS_NETEASE,
-                        defaultValue = false
-                    )
+                        checked = lyricsSources.netEase
+                    ) { enabled ->
+                        savePref(PREF_LYRICS_NETEASE, enabled)
+                        lyricsSources = LyricsSourceSettings.read(prefs)
+                    }
                 }
             }
         }
@@ -256,14 +265,18 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
     @Composable
     fun SettingsRow(title: String, subtitle: String, prefKey: String, defaultValue: Boolean) {
         var checked by remember { mutableStateOf(prefs.getBoolean(prefKey, defaultValue)) }
+        SettingsRow(title, subtitle, checked) { value ->
+            checked = value
+            savePref(prefKey, value)
+        }
+    }
 
+    @Composable
+    private fun SettingsRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable {
-                    checked = !checked
-                    savePref(prefKey, checked)
-                }
+                .clickable { onCheckedChange(!checked) }
                 .padding(horizontal = 24.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -284,10 +297,7 @@ class SettingsActivity : ComponentActivity(), XposedServiceHelper.OnServiceListe
             }
             Switch(
                 checked = checked,
-                onCheckedChange = { isChecked ->
-                    checked = isChecked
-                    savePref(prefKey, isChecked)
-                }
+                onCheckedChange = onCheckedChange
             )
         }
     }

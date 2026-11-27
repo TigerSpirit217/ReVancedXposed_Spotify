@@ -13,6 +13,7 @@ import io.github.chsbuffer.revancedxposed.spotify.SpotifyHook
 import io.github.chsbuffer.revancedxposed.spotify.SpotifyRestart
 import io.github.chsbuffer.revancedxposed.spotify.SpotifySettingsEntry
 import io.github.chsbuffer.revancedxposed.spotify.ThemeHook
+import io.github.chsbuffer.revancedxposed.spotify.misc.lyrics.LyricsSourceSettings
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
@@ -111,12 +112,13 @@ class MainHook : XposedModule() {
 
         // --- SPOTIFY PATCHES ---
         try {
+            val lyricsSources = LyricsSourceSettings.read(prefs)
             SpotifyHook(
                 app,
                 lpparam,
                 enablePremium = prefs.getBoolean(PREF_ENABLE_PREMIUM, true),
-                lyricsBetterLyrics = prefs.getBoolean(PREF_LYRICS_BETTER_LYRICS, false),
-                lyricsNetEase = prefs.getBoolean(PREF_LYRICS_NETEASE, false)
+                lyricsBetterLyrics = lyricsSources.betterLyrics,
+                lyricsNetEase = lyricsSources.netEase
             ).Hook()
         } catch (e: Exception) {
             log(TAG, "Spotify patches failed: ${e.message}", e)
