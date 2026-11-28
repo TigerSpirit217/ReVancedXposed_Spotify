@@ -20,11 +20,7 @@ internal class SpotifyLyricsResponse(private val responseClass: Class<*>) {
     private val startTimeField = lineClass.fieldNumber("START_TIME_MS")
     private val wordsField = lineClass.fieldNumber("WORDS")
     private val endTimeField = if (v3) lineClass.fieldNumber("END_TIME_MS") else 0
-    private val defaultInstance = responseClass.getDeclaredField("DEFAULT_INSTANCE")
-        .apply { isAccessible = true }.get(null)
-    private val parser = checkNotNull(responseClass.superclass).let { base ->
-        base.getDeclaredMethod("parseFrom", base, ByteArray::class.java).apply { isAccessible = true }
-    }
+    private val proto = SpotifyProto(responseClass)
     private val lineSynced = lyricsClass.declaredMethods.asSequence().map { it.returnType }
         .distinct().flatMap { it.enumConstants?.asSequence() ?: emptySequence() }
         .filterIsInstance<Enum<*>>().single { it.name == "LINE_SYNCED" }.let {
@@ -57,8 +53,7 @@ internal class SpotifyLyricsResponse(private val responseClass: Class<*>) {
                 runCatching { encodeTranslation(translation) }.getOrNull()?.writeTo(this)
             }
         }
-        val bytes = ProtoMessage().apply { message(lyricsField, lyricMessage) }.toByteArray()
-        return checkNotNull(parser.invoke(null, defaultInstance, bytes))
+        return proto.parse(ProtoMessage().apply { message(lyricsField, lyricMessage) })
     }
 
     private fun encodeTranslation(translation: LyricTranslation): ProtoMessage = ProtoMessage().apply {
@@ -86,32 +81,42 @@ internal class SpotifyLyricsResponse(private val responseClass: Class<*>) {
             text(lyricsClass.fieldNumber("TRANSLATION_LANGUAGES"), CHINESE_LANGUAGE)
         }
     }
+}
 
-    private fun Class<*>.fieldNumber(field: String): Int =
-        getDeclaredField("${field}_FIELD_NUMBER").apply { isAccessible = true }.getInt(null)
+internal fun Class<*>.fieldNumber(field: String): Int =
+    getDeclaredField("${field}_FIELD_NUMBER").apply { isAccessible = true }.getInt(null)
 
-    private class ProtoMessage : ByteArrayOutputStream() {
-        fun number(field: Int, value: Long) {
-            varint(field.toLong() shl 3)
-            varint(value)
+internal class SpotifyProto(type: Class<*>) {
+    private val defaultInstance = type.getDeclaredField("DEFAULT_INSTANCE").apply { isAccessible = true }.get(null)
+    private val parser = checkNotNull(type.superclass).let { base ->
+        base.getDeclaredMethod("parseFrom", base, ByteArray::class.java).apply { isAccessible = true }
+    }
+
+    fun parse(message: ProtoMessage): Any =
+        checkNotNull(parser.invoke(null, defaultInstance, message.toByteArray()))
+}
+
+internal class ProtoMessage : ByteArrayOutputStream() {
+    fun number(field: Int, value: Long) {
+        varint(field.toLong() shl 3)
+        varint(value)
+    }
+
+    fun text(field: Int, value: String) = bytes(field, value.toByteArray(Charsets.UTF_8))
+    fun message(field: Int, value: ProtoMessage) = bytes(field, value.toByteArray())
+
+    private fun bytes(field: Int, value: ByteArray) {
+        varint((field.toLong() shl 3) or 2)
+        varint(value.size.toLong())
+        write(value)
+    }
+
+    private fun varint(value: Long) {
+        var remaining = value
+        while (remaining ushr 7 != 0L) {
+            write((remaining.toInt() and 0x7f) or 0x80)
+            remaining = remaining ushr 7
         }
-
-        fun text(field: Int, value: String) = bytes(field, value.toByteArray(Charsets.UTF_8))
-        fun message(field: Int, value: ProtoMessage) = bytes(field, value.toByteArray())
-
-        private fun bytes(field: Int, value: ByteArray) {
-            varint((field.toLong() shl 3) or 2)
-            varint(value.size.toLong())
-            write(value)
-        }
-
-        private fun varint(value: Long) {
-            var remaining = value
-            while (remaining ushr 7 != 0L) {
-                write((remaining.toInt() and 0x7f) or 0x80)
-                remaining = remaining ushr 7
-            }
-            write(remaining.toInt())
-        }
+        write(remaining.toInt())
     }
 }

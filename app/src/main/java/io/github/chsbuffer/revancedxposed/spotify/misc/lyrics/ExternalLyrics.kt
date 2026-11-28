@@ -16,17 +16,29 @@ import java.util.concurrent.TimeUnit
 
 fun SpotifyHook.ExternalLyrics() {
     val bridge = ExternalLyricsBridge(classLoader, LyricSources(lyricsBetterLyrics, lyricsNetEase))
-    val retrofit = classLoader.loadClass("com.spotify.connectivity.httpretrofit.RetrofitMaker")
-    val factory = retrofit.declaredMethods.single { method ->
-        method.name == "assertAndCreate" && Class::class.java in method.parameterTypes
+    val invocation = ::lyricsRetrofitInvocationFingerprint.dexMethod.let {
+        classLoader.loadClass(it.className).getDeclaredMethod(
+            it.name, Any::class.java, Method::class.java, Array<Any>::class.java
+        )
     }
+    val codecs = ::lyricsServiceMethodsFingerprint.dexMethodList.mapNotNull {
+        val method = it.getMethodInstance(classLoader)
+        val result = (method.genericReturnType as? ParameterizedType)
+            ?.actualTypeArguments?.singleOrNull() as? Class<*> ?: return@mapNotNull null
+        if (result.name != LYRICS_V2 && result.name != LYRICS_V3) return@mapNotNull null
+        method to SpotifyLyricsResponse(result)
+    }.toMap()
+    check(codecs.isNotEmpty()) { "No Spotify lyrics service methods matched" }
     val availability = ::trackLyricsAvailabilityFingerprint.method
-    factory.hookMethod {
+    // Hook the requests themselves so existing Retrofit proxies are covered too.
+    invocation.hookMethod {
         after { param ->
             if (param.throwable != null) return@after
-            val service = param.args.filterIsInstance<Class<*>>().singleOrNull() ?: return@after
-            val original = param.result ?: return@after
-            bridge.wrapService(service, original)?.let { param.result = it }
+            val method = param.args[1] as? Method ?: return@after
+            val codec = codecs[method] ?: return@after
+            val request = param.result ?: return@after
+            val trackId = (param.args[2] as? Array<*>)?.firstOrNull() as? String ?: return@after
+            param.result = bridge.withFallback(request, codec, trackId)
         }
     }
     availability.hookMethod {
@@ -42,6 +54,7 @@ fun SpotifyHook.ExternalLyrics() {
             bridge.rememberMediaMetadata(metadata)
         }
     }
+    installLyricsCard(bridge::rememberContextTrack)
 }
 
 private class ExternalLyricsBridge(loader: ClassLoader, private val sources: LyricSources) {
@@ -96,45 +109,18 @@ private class ExternalLyricsBridge(loader: ClassLoader, private val sources: Lyr
         ))
     }
 
-    fun wrapService(service: Class<*>, original: Any): Any? {
-        if (!service.isInterface || !Proxy.isProxyClass(original.javaClass)) return null
-        val methods = service.declaredMethods.mapNotNull { method ->
-            if (method.returnType != single) return@mapNotNull null
-            val result = (method.genericReturnType as? ParameterizedType)
-                ?.actualTypeArguments?.singleOrNull() as? Class<*> ?: return@mapNotNull null
-            if (result.name != LYRICS_V2 && result.name != LYRICS_V3) return@mapNotNull null
-            val route = if (result.name == LYRICS_V3) "color-lyrics/v3/track/{trackId}" else "color-lyrics/v2/track/{trackId}"
-            if (!method.hasRoute(route)) return@mapNotNull null
-            method to SpotifyLyricsResponse(result)
-        }.toMap()
-        if (methods.isEmpty()) return null
-        val handler = Proxy.getInvocationHandler(original)
-        return Proxy.newProxyInstance(service.classLoader, arrayOf(service)) { proxy, method, args ->
-            if (method.declaringClass == Any::class.java && method.name == "equals") {
-                return@newProxyInstance proxy === args?.firstOrNull()
-            }
-            val spotifyResult = handler.invoke(original, method, args)
-            val codec = methods[method] ?: return@newProxyInstance spotifyResult
-            val id = (args?.firstOrNull() as? String)?.removePrefix("spotify:track:")
-                ?: return@newProxyInstance spotifyResult
-            if (!trackId.matches(id)) return@newProxyInstance spotifyResult
+    fun withFallback(request: Any, codec: SpotifyLyricsResponse, trackUri: String): Any {
+        val id = trackUri.removePrefix("spotify:track:")
+        if (!trackId.matches(id)) return request
 
-            val resumeOnMissing = singleCallback(function, "apply") { cause ->
-                val failure = cause as Throwable
-                val track = tracks.get(id)
-                val missing = httpError.isInstance(failure) &&
-                    (failure.message == "HTTP 404" || failure.message?.startsWith("HTTP 404 ") == true)
-                if (missing && track != null) findLyrics(track, codec, failure) else error.invoke(null, failure)
-            }
-            resume.invoke(spotifyResult, resumeOnMissing)
+        val resumeOnMissing = singleCallback(function, "apply") { cause ->
+            val failure = cause as Throwable
+            val track = tracks.get(id)
+            val missing = httpError.isInstance(failure) &&
+                (failure.message == "HTTP 404" || failure.message?.startsWith("HTTP 404 ") == true)
+            if (missing && track != null) findLyrics(track, codec, failure) else error.invoke(null, failure)
         }
-    }
-
-    private fun Method.hasRoute(route: String): Boolean = declaredAnnotations.any { annotation ->
-        annotation.annotationClass.java.declaredMethods.any { attribute ->
-            attribute.returnType == String::class.java && attribute.parameterCount == 0 &&
-                runCatching { attribute.invoke(annotation) == route }.getOrDefault(false)
-        }
+        return checkNotNull(resume.invoke(request, resumeOnMissing))
     }
 
     private fun findLyrics(track: LyricTrack, codec: SpotifyLyricsResponse, originalError: Throwable): Any {
@@ -142,7 +128,9 @@ private class ExternalLyricsBridge(loader: ClassLoader, private val sources: Lyr
             try {
                 io.execute {
                     if (isDisposed.invoke(callback) == true) return@execute
-                    val response = runCatching { sources.find(track)?.let { codec.encode(it, track.durationMs) } }.getOrNull()
+                    val response = runCatching {
+                        sources.find(track)?.let { codec.encode(it, track.durationMs) }
+                    }.getOrNull()
                     if (response != null) onSuccess.invoke(callback, response) else tryOnError.invoke(callback, originalError)
                 }
             } catch (_: RejectedExecutionException) {

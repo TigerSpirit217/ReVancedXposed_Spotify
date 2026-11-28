@@ -7,6 +7,8 @@
 
 **A ReVanced LSPosed module by ChsBuffer for Spotify.**
 
+**This fork is maintained by TigerSpirit217 and builds on upstream work by TheWinner02 and pizzaschleppa.**
+
 > [!IMPORTANT]
 > -   This is an **unofficial ReVanced project**. Please do not ask the ReVanced developers for support.
 > -   **Root access is required** to use this module.
@@ -29,16 +31,36 @@ Open Spotify's sidebar and select **ReVanced Xposed Settings**. After changing s
 -   **RoundyUI (off by default)**. Rounds corners on elements such as cards, cover art, buttons, and bottom sheets.
 -   **Native HTTP filtering (experimental, currently unregistered)**. Includes a filter for ad and tracking requests.
 
-## Downloads
+## Downloads and Release Differences
 
--   [Download the release build](https://github.com/TigerSpirit217/ReVancedXposed_Spotify/releases)
+### Source Repository
+
+-   [Repository](https://github.com/TigerSpirit217/ReVancedXposed_Spotify)
+-   [Download](https://github.com/TigerSpirit217/ReVancedXposed_Spotify/releases)
 
 > [!NOTE]
-> The release build's package name and signature change daily. If you already have it installed, you can keep using your installation.
+> The package name and signing key for releases from this repository change daily and with each update.
+>
+> You only need to reinstall when a new version is available.
+>
+> To update, uninstall the previous version, install the new version, and configure the module settings again.
+
+### Xposed-Modules-Repo
+
+-   [Repository](https://github.com/Xposed-Modules-Repo/io.github.tigerspirit217.rvx.fe.s)
+-   [Download](https://github.com/Xposed-Modules-Repo/io.github.tigerspirit217.rvx.fe.s/releases)
+
+> [!NOTE]
+> Releases in Xposed-Modules-Repo are updated on an irregular schedule.
+>
+> These releases always use the package name `io.github.tigerspirit217.rvx.fe.s` and the same signing key.
+>
+> This version is easier to update and carries a higher risk of an account ban if the module is detected. Use it at your own risk.
 
 ## ⭐ Credits
 
 -   High-performance DEX runtime parsing library [DexKit](https://luckypray.org/DexKit/en/)
 -   Continuation of the Vanced project [ReVanced](https://revanced.app)
+-   Lyrics provider [BetterLyrics](https://betterlyrics.org/)
 -   Original developer of ReVanced Xposed (now NexAlloy) [ChsBuffer](https://github.com/chsbuffer)
 -   Additional modifications by [TheWinner02](https://github.com/TheWinner02) and [pizzaschleppa](https://github.com/pizzaschleppa)

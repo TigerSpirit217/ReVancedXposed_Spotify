@@ -7,6 +7,8 @@
 
 **由 ChsBuffer 开发的 ReVanced LSPosed 模块，仅适用于 Spotify。**
 
+**本项目仓库是经由 TheWinner02 和 pizzaschleppa 开发后，由开发者 TigerSpirit217 同步自上游并继续开发的分支。**
+
 > [!IMPORTANT]
 > -   本项目为**非官方 ReVanced 项目**。请勿向 ReVanced 开发者寻求支持。
 > -   使用本模块**必须拥有 Root 权限**。
@@ -29,16 +31,36 @@
 -   **RoundyUI（默认关闭）**。为卡片、封面、按钮和底部弹层等元素添加圆角。
 -   **原生 HTTP 过滤（实验性，尚未接入加载流程）**。实现了广告和追踪请求过滤。
 
-## 下载
+## 下载 与 仓库版本差异
 
--   [下载发布版](https://github.com/TigerSpirit217/ReVancedXposed_Spotify/releases)
+### 源码仓库
+
+-   [仓库地址](https://github.com/TigerSpirit217/ReVancedXposed_Spotify)
+-   [下载](https://github.com/TigerSpirit217/ReVancedXposed_Spotify/releases)
 
 > [!NOTE]
-> 发布版的包名和签名每天都会变化。已安装的用户无需每天重新安装。
+> 源码仓库中发布版的包名和签名每天和每次更新都会变化。
+> 
+> 若无版本更新，无需每天重新安装。
+> 
+> 用户更新请先卸载旧版本再安装新版本，并重新调整模块设置。
+
+### Xposed-Modules-Repo 仓库
+
+-   [仓库地址](https://github.com/Xposed-Modules-Repo/io.github.tigerspirit217.rvx.fe.s)
+-   [下载](https://github.com/Xposed-Modules-Repo/io.github.tigerspirit217.rvx.fe.s/releases)
+
+> [!NOTE]
+> Xposed-Modules-Repo仓库的release版本不定时更新。
+>
+> 这里的发布版的包名固定为 `io.github.tigerspirit217.rvx.fe.s` ，签名也固定。
+>
+> 此版本便于用户更新，但增加了由于模块被检测导致账号封禁的风险，后果自负。
 
 ## ⭐ 致谢
 
 -   高性能 DEX 运行时解析库 [DexKit](https://luckypray.org/DexKit/en/)
 -   延续 Vanced 项目的 [ReVanced](https://revanced.app)
+-   歌词源 [BetterLyrics](https://betterlyrics.org/)
 -   最初开发 ReVanced Xposed（现名 NexAlloy）的 [ChsBuffer](https://github.com/chsbuffer)
 -   提供其他修改的 [TheWinner02](https://github.com/TheWinner02) 和 [pizzaschleppa](https://github.com/pizzaschleppa)
