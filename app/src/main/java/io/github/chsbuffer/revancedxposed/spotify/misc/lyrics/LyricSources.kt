@@ -1,18 +1,19 @@
 package io.github.chsbuffer.revancedxposed.spotify.misc.lyrics
 
 import android.net.Uri
+import android.util.Log
 import android.util.LruCache
 import android.util.Xml
+import io.github.chsbuffer.revancedxposed.spotify.createTraditionalToSimplified
 import org.json.JSONObject
 import org.xmlpull.v1.XmlPullParser
 import java.io.ByteArrayOutputStream
 import java.io.StringReader
 import java.net.HttpURLConnection
 import java.net.URI
-import java.text.Normalizer
-import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.roundToLong
+
+private const val TAG = "ReVancedXposed-Lyrics"
 
 internal data class LyricTrack(
     val id: String,
@@ -23,7 +24,13 @@ internal data class LyricTrack(
 )
 
 internal data class LyricLine(val startMs: Long, val words: String)
-internal data class FoundLyrics(val provider: String, val displayName: String, val lines: List<LyricLine>)
+internal data class LyricTranslation(val originalLanguage: String, val lines: List<String>)
+internal data class FoundLyrics(
+    val provider: String,
+    val displayName: String,
+    val lines: List<LyricLine>,
+    val chineseTranslation: LyricTranslation? = null
+)
 
 internal class LyricSources(
     private val betterLyrics: Boolean,
@@ -31,12 +38,22 @@ internal class LyricSources(
 ) {
     private data class Cached(val expiresAt: Long, val lyrics: FoundLyrics?)
     private val cache = LruCache<String, Cached>(64)
+    private val netEaseMatcher by lazy {
+        val simplify = runCatching { createTraditionalToSimplified() }.getOrNull()
+        NetEaseSongMatcher { value ->
+            if (simplify == null) value else synchronized(simplify) { simplify(value) }
+        }
+    }
 
     fun find(track: LyricTrack): FoundLyrics? {
         val now = android.os.SystemClock.elapsedRealtime()
         cache.get(track.id)?.takeIf { now < it.expiresAt }?.let { return it.lyrics }
         val found = if (betterLyrics) runCatching { fromBetterLyrics(track) }.getOrNull() else null
-        val result = found ?: if (netEase) runCatching { fromNetEase(track) }.getOrNull() else null
+        val result = found ?: if (netEase) {
+            runCatching { fromNetEase(track) }.onFailure {
+                Log.w(TAG, "NetEase lookup failed (${it.javaClass.simpleName})")
+            }.getOrNull()
+        } else null
         val completed = android.os.SystemClock.elapsedRealtime()
         return synchronized(cache) {
             val alreadyFound = cache.get(track.id)?.takeIf { completed < it.expiresAt }?.lyrics
@@ -65,30 +82,25 @@ internal class LyricSources(
             .appendQueryParameter("limit", "8")
             .build()
         val songs = getJson(query)?.optJSONObject("result")?.optJSONArray("songs") ?: return null
-        val title = normalize(track.title)
-        val artist = normalize(track.artist)
-        val album = track.album?.let(::normalize)
-        val candidates = (0 until songs.length()).mapNotNull { songs.optJSONObject(it) }.filter { song ->
-            val artists = song.optJSONArray("ar") ?: return@filter false
-            val names = (0 until artists.length()).mapNotNull { artists.optJSONObject(it)?.optString("name") }
-            val duration = song.optLong("dt", 0)
-            normalize(song.optString("name")) == title &&
-                (names.any { normalize(it) == artist } || normalize(names.joinToString(" ")) == artist) &&
-                (track.durationMs == null || duration == 0L || abs(track.durationMs - duration) <= 5_000)
+        val candidates = netEaseMatcher.rank(songs, track)
+        if (candidates.isEmpty()) {
+            Log.d(TAG, "NetEase search returned no matching recording")
         }
-        val song = candidates.minWithOrNull(
-            compareBy<JSONObject> { album != null && normalize(it.optJSONObject("al")?.optString("name").orEmpty()) != album }
-                .thenBy { track.durationMs?.let { duration -> abs(duration - it.optLong("dt")) } ?: 0L }
-        ) ?: return null
-        val songId = song.optLong("id")
-        if (songId <= 0) return null
-        val lyrics = Uri.parse("https://music.163.com/api/song/lyric/v1").buildUpon()
-            .appendQueryParameter("id", songId.toString())
-            .appendQueryParameter("lv", "0")
-            .build()
-        val lrc = getJson(lyrics)?.optJSONObject("lrc")?.optString("lyric").orEmpty()
-        val lines = parseLrc(lrc)
-        return if (lines.isEmpty()) null else FoundLyrics("netease", "NetEase Cloud Music", lines)
+        for (songId in candidates.take(2)) {
+            val lyrics = Uri.parse("https://music.163.com/api/song/lyric/v1").buildUpon()
+                .appendQueryParameter("id", songId.toString())
+                .appendQueryParameter("lv", "0")
+                .appendQueryParameter("tv", "0")
+                .build()
+            val response = getJson(lyrics) ?: return null
+            val lines = parseLrc(response.optJSONObject("lrc")?.optString("lyric").orEmpty())
+            if (lines.isNotEmpty()) {
+                val translatedLines = parseLrc(response.optJSONObject("tlyric")?.optString("lyric").orEmpty())
+                val translation = netEaseChineseTranslation(lines, translatedLines)
+                return FoundLyrics("netease", "NetEase Cloud Music", lines, translation)
+            }
+        }
+        return null
     }
 
     private fun getJson(uri: Uri): JSONObject? {
@@ -99,7 +111,11 @@ internal class LyricSources(
             connection.instanceFollowRedirects = false
             connection.setRequestProperty("Accept", "application/json")
             connection.setRequestProperty("User-Agent", "ReVancedXposedSpotify")
-            if (connection.responseCode != HttpURLConnection.HTTP_OK) return null
+            val status = connection.responseCode
+            if (status != HttpURLConnection.HTTP_OK) {
+                if (uri.host == "music.163.com") Log.w(TAG, "NetEase ${uri.path} returned HTTP $status")
+                return null
+            }
 
             return connection.inputStream.use { stream ->
                 val output = ByteArrayOutputStream()
@@ -110,15 +126,18 @@ internal class LyricSources(
                     if (output.size() + count > 512 * 1024) return null
                     output.write(buffer, 0, count)
                 }
-                JSONObject(output.toString(Charsets.UTF_8.name()))
+                val response = JSONObject(output.toString(Charsets.UTF_8.name()))
+                val code = response.optInt("code", HttpURLConnection.HTTP_OK)
+                if (uri.host == "music.163.com" && code != HttpURLConnection.HTTP_OK) {
+                    Log.w(TAG, "NetEase ${uri.path} returned code $code")
+                    return null
+                }
+                response
             }
         } finally {
             connection.disconnect()
         }
     }
-
-    private fun normalize(value: String) = Normalizer.normalize(value, Normalizer.Form.NFKC)
-        .lowercase(Locale.ROOT).filter(Char::isLetterOrDigit)
 }
 
 private val lrcTimestamp = Regex("""\[(\d{1,3}:\d{2}(?:[.:]\d{1,3})?)]""")

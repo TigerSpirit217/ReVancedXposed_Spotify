@@ -22,7 +22,7 @@ Open Spotify's sidebar and select **ReVanced Xposed Settings**. After changing s
 -   **Premium playback adjustments (on by default)**. Covers on-demand playback, playback order, Shuffle and Smart Shuffle, and adding tracks to the queue. This patch also adjusts the Premium UI, includes compatibility changes for Google Assistant playback and legacy Car Thing, and filters ad sections on Home and Browse as well as promotional pop-ups.
 -   **Ad blocking (on by default)**. Attempts to disable ads and hide the video ad countdown.
 -   **Share link sanitization**. Removes the `si` and `utm_source` tracking parameters when copying links or using the Android share sheet.
--   **Additional lyrics sources (off by default)**. Better Lyrics and NetEase Cloud Music can fill in missing lyrics in Spotify's existing lyrics view. If both are enabled, Better Lyrics is tried first.
+-   **Additional lyrics sources (off by default)**. Better Lyrics and NetEase Cloud Music can fill in missing lyrics in Spotify's existing lyrics view. If both are enabled, Better Lyrics is tried first. When NetEase Cloud Music provides a Chinese translation for a non-Chinese song, it appears as an option in Spotify's lyrics view.
 -   **Session retention**. Attempts to prevent automatic sign-outs.
 -   **Third-party launcher widget compatibility**. Allows third-party Android launchers to bind Spotify widgets.
 -   **Monet theme (off by default)**. Uses Android's wallpaper-based colors for Spotify backgrounds and accents.

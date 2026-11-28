@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 
 internal const val LYRICS_V2 = "com.spotify.lyrics.serviceretrofit.proto.ColorLyricsResponse"
 internal const val LYRICS_V3 = "com.spotify.lyrics.serviceretrofit.proto.v3.LyricsWrapperResponse"
+private const val CHINESE_LANGUAGE = "zh"
 
 internal class SpotifyLyricsResponse(private val responseClass: Class<*>) {
     private val v3 = responseClass.name == LYRICS_V3
@@ -52,9 +53,38 @@ internal class SpotifyLyricsResponse(private val responseClass: Class<*>) {
                 message(linesField, lineMessage)
                 if (v3 && index < 4) message(previewLinesField, lineMessage)
             }
+            lyrics.chineseTranslation?.let { translation ->
+                runCatching { encodeTranslation(translation) }.getOrNull()?.writeTo(this)
+            }
         }
         val bytes = ProtoMessage().apply { message(lyricsField, lyricMessage) }.toByteArray()
         return checkNotNull(parser.invoke(null, defaultInstance, bytes))
+    }
+
+    private fun encodeTranslation(translation: LyricTranslation): ProtoMessage = ProtoMessage().apply {
+        val languageField = lyricsClass.fieldNumber("LANGUAGE")
+        if (v3) {
+            val languageClass = lyricsClass.getDeclaredField("language_").type
+            val codeField = languageClass.fieldNumber("CODE")
+            val translationClass = lyricsClass.getDeclaredField("translation_").type
+            message(lyricsClass.fieldNumber("TRANSLATION"), ProtoMessage().apply {
+                message(translationClass.fieldNumber("LANGUAGE"), ProtoMessage().apply {
+                    text(codeField, CHINESE_LANGUAGE)
+                })
+                val linesField = translationClass.fieldNumber("LINES")
+                translation.lines.forEach { text(linesField, it) }
+            })
+            message(languageField, ProtoMessage().apply { text(codeField, translation.originalLanguage) })
+        } else {
+            val alternativeClass = responseClass.classLoader!!.loadClass(lyricsClass.name + "\$Alternative")
+            message(lyricsClass.fieldNumber("ALTERNATIVES"), ProtoMessage().apply {
+                text(alternativeClass.fieldNumber("LANGUAGE"), CHINESE_LANGUAGE)
+                val linesField = alternativeClass.fieldNumber("LINES")
+                translation.lines.forEach { text(linesField, it) }
+            })
+            text(languageField, translation.originalLanguage)
+            text(lyricsClass.fieldNumber("TRANSLATION_LANGUAGES"), CHINESE_LANGUAGE)
+        }
     }
 
     private fun Class<*>.fieldNumber(field: String): Int =
