@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 import java.util.Random
 
 plugins {
@@ -13,15 +14,7 @@ val gitCommitHashProvider = providers.exec {
     workingDir = rootProject.rootDir
 }.standardOutput.asText!!
 
-val gitCommitDateProvider = providers.exec {
-    commandLine("git log -1 --format=%cd --date=format:%y%m%d".split(' '))
-    workingDir = rootProject.rootDir
-}.standardOutput.asText!!
-
-private val seed = providers.gradleProperty("PACKAGE_NAME_SEED").orElse("0").get()
-    .toLong().also { println("Seed for package name: $it") }
-private val ciVersionCode = providers.gradleProperty("VERSION_CODE").map(String::toInt)
-private val myPackageName = genPackageName(seed).also { println("Package name: $it") }
+private val isGitHubActions = providers.environmentVariable("GITHUB_ACTIONS").orNull == "true"
 
 private fun genPackageName(seed: Long): String {
     val ALPHA = "abcdefghijklmnopqrstuvwxyz"
@@ -53,9 +46,32 @@ android {
     namespace = "io.github.chsbuffer.revancedxposed"
 
     defaultConfig {
-        applicationId = myPackageName
-        versionCode = ciVersionCode.orElse(35).get()
-        versionName = gitCommitDateProvider.get().trim()
+        if (isGitHubActions) {
+            val seed = providers.gradleProperty("PACKAGE_NAME_SEED").orNull?.toLongOrNull()
+                ?: error("GitHub Actions requires a numeric PACKAGE_NAME_SEED")
+            println("Seed for package name: $seed")
+            applicationId = genPackageName(seed)
+            versionCode = providers.gradleProperty("VERSION_CODE").orNull?.toIntOrNull()?.takeIf { it > 0 }
+                ?: error("GitHub Actions requires a positive VERSION_CODE")
+            versionName = providers.exec {
+                commandLine("git", "log", "-1", "--format=%cd", "--date=format:%y%m%d")
+                workingDir = rootProject.rootDir
+            }.standardOutput.asText.get().trim()
+        } else {
+            val config = rootProject.layout.projectDirectory.file("fixed-build.properties")
+            val properties = Properties().apply {
+                load(providers.fileContents(config).asText.get().reader())
+            }
+            fun fixedValue(key: String): String =
+                properties.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: error("Set $key in fixed-build.properties")
+
+            applicationId = fixedValue("applicationId")
+            versionName = fixedValue("versionName")
+            versionCode = fixedValue("versionCode").toIntOrNull()?.takeIf { it > 0 }
+                ?: error("Set a positive versionCode in fixed-build.properties")
+        }
+        println("Package name: $applicationId")
         buildConfigField("String", "COMMIT_HASH", "\"${gitCommitHashProvider.get().trim()}\"")
     }
     flavorDimensions += "abi"
@@ -139,7 +155,7 @@ dependencies {
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
         variant.packaging.resources.excludes.add("kotlin/**")
-        if (ciVersionCode.isPresent) {
+        if (isGitHubActions) {
             variant.outputs.forEach { output ->
                 output.outputFileName.set(output.versionName.zip(output.versionCode) { date, code ->
                     "ReVancedXposedSpotify-$date-$code.apk"
